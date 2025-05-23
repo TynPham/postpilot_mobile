@@ -23,7 +23,7 @@ const Input = ({ label, control, errorMessage, className, name, ...props }: Inpu
         render={({ field: { onChange, onBlur, value } }) => (
           <TextInput
             {...props}
-            className={cn("w-full p-4 bg-gray-50 rounded-lg border border-gray-200", className)}
+            className={cn("w-full p-4 bg-gray-50 rounded-lg border border-gray-200 placeholder:text-gray-400", className)}
             onBlur={onBlur}
             onChangeText={onChange}
             value={value}
