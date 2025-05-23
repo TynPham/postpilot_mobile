@@ -1,14 +1,15 @@
+import { useAuth } from "@clerk/clerk-expo";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import Feather from "@expo/vector-icons/Feather";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { Tabs } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 import React from "react";
 import { View } from "react-native";
 
 const getTabBarIcon = (name: string, focused: boolean) => {
   const color = focused ? "hsl(215.24, 98.1%, 58.82%)" : "black";
   switch (name) {
-    case "home":
+    case "dashboard":
       return <MaterialCommunityIcons name="view-dashboard-outline" size={24} color={color} />;
     case "calendar":
       return <AntDesign name="calendar" size={24} color={color} />;
@@ -16,6 +17,8 @@ const getTabBarIcon = (name: string, focused: boolean) => {
       return <Feather name="user-plus" size={24} color={color} />;
     case "bot":
       return <MaterialCommunityIcons name="robot-outline" size={24} color={color} />;
+    case "setting":
+      return <Feather name="settings" size={24} color={color} />;
     default:
       return null;
   }
@@ -26,6 +29,11 @@ const TabBarIcon = ({ focused, name }: { focused: boolean; name: string }) => {
 };
 
 const TabLayout = () => {
+  const { isSignedIn } = useAuth();
+
+  if (!isSignedIn) {
+    return <Redirect href="/(auth)/sign-in" />;
+  }
   return (
     <Tabs
       screenOptions={{
@@ -46,8 +54,8 @@ const TabLayout = () => {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
-          tabBarIcon: ({ focused }) => <TabBarIcon focused={focused} name="home" />,
+          title: "Dashboard",
+          tabBarIcon: ({ focused }) => <TabBarIcon focused={focused} name="dashboard" />,
         }}
       />
 
@@ -63,6 +71,13 @@ const TabLayout = () => {
         options={{
           title: "Bot",
           tabBarIcon: ({ focused }) => <TabBarIcon focused={focused} name="bot" />,
+        }}
+      />
+      <Tabs.Screen
+        name="setting"
+        options={{
+          title: "Setting",
+          tabBarIcon: ({ focused }) => <TabBarIcon focused={focused} name="setting" />,
         }}
       />
     </Tabs>

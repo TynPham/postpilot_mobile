@@ -1,5 +1,7 @@
 import httpConfigs from "@/configs/http";
+import { TOKEN_KEY } from "@/constants/token";
 import axios from "axios";
+import { deleteSecureStore, getSecureStore } from "./secure-store";
 
 const http = axios.create({
   baseURL: httpConfigs.baseURL,
@@ -11,9 +13,11 @@ const http = axios.create({
 
 // Add a request interceptor
 http.interceptors.request.use(
-  function (config) {
-    // Do something before request is sent
-    config.headers.authorization = `Bearer ${httpConfigs.apiKey}`;
+  async function (config) {
+    const token = await getSecureStore(TOKEN_KEY);
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   function (error) {
@@ -29,9 +33,12 @@ http.interceptors.response.use(
     // Do something with response data
     return response;
   },
-  function (error) {
+  async function (error) {
     // Any status codes that falls outside the range of 2xx cause this function to trigger
     // Do something with response error
+    if (error.response?.status === 401) {
+      await deleteSecureStore(TOKEN_KEY);
+    }
     return Promise.reject(error);
   }
 );
