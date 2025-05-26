@@ -5,3 +5,5 @@ export const PLATFORM_TYPE = {
   THREADS: "threads",
   X: "x",
 } as const;
+
+export const TEMPLATE_TOKEN = "post-pilot";

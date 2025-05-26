@@ -1,3 +1,4 @@
+import path from "@/constants/path";
 import { useAuth } from "@clerk/clerk-expo";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import Feather from "@expo/vector-icons/Feather";
@@ -6,19 +7,25 @@ import { Redirect, Tabs } from "expo-router";
 import React from "react";
 import { View } from "react-native";
 
+const ACTIVE_TAB_COLOR = "hsl(215.24, 98.1%, 58.82%)";
+
 const getTabBarIcon = (name: string, focused: boolean) => {
-  const color = focused ? "hsl(215.24, 98.1%, 58.82%)" : "black";
+  const styleIcon = {
+    color: focused ? ACTIVE_TAB_COLOR : "black",
+    size: 24,
+  };
+
   switch (name) {
     case "dashboard":
-      return <MaterialCommunityIcons name="view-dashboard-outline" size={24} color={color} />;
-    case "calendar":
-      return <AntDesign name="calendar" size={24} color={color} />;
+      return <MaterialCommunityIcons name="view-dashboard-outline" {...styleIcon} />;
+    case "schedule":
+      return <AntDesign name="calendar" {...styleIcon} />;
     case "connect":
-      return <Feather name="user-plus" size={24} color={color} />;
+      return <Feather name="user-plus" {...styleIcon} />;
     case "bot":
-      return <MaterialCommunityIcons name="robot-outline" size={24} color={color} />;
+      return <MaterialCommunityIcons name="robot-outline" {...styleIcon} />;
     case "setting":
-      return <Feather name="settings" size={24} color={color} />;
+      return <Feather name="settings" {...styleIcon} />;
     default:
       return null;
   }
@@ -32,7 +39,7 @@ const TabLayout = () => {
   const { isSignedIn } = useAuth();
 
   if (!isSignedIn) {
-    return <Redirect href="/(auth)/sign-in" />;
+    return <Redirect href={path.signIn} />;
   }
   return (
     <Tabs
@@ -41,14 +48,14 @@ const TabLayout = () => {
           width: "100%",
           height: "100%",
         },
-        tabBarActiveTintColor: "hsl(215.24, 98.1%, 58.82%)",
+        tabBarActiveTintColor: ACTIVE_TAB_COLOR,
       }}
     >
       <Tabs.Screen
-        name="calendar"
+        name="schedule"
         options={{
-          title: "Calendar",
-          tabBarIcon: ({ focused }) => <TabBarIcon focused={focused} name="calendar" />,
+          title: "Schedule",
+          tabBarIcon: ({ focused }) => <TabBarIcon focused={focused} name="schedule" />,
         }}
       />
       <Tabs.Screen

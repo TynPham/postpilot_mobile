@@ -1,15 +1,18 @@
+import { useAppContext } from "@/contexts/app-context";
 import { useGenerateAIContent } from "@/hooks/useAI";
 import { useCredential } from "@/hooks/useCredential";
+import { useCreatePostMutation } from "@/hooks/usePost";
 import { cn } from "@/lib/utils";
-import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
+import { createPostSchema, CreatePostSchema } from "@/schema-validations/post";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import { zodResolver } from "@hookform/resolvers/zod";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import Checkbox from "expo-checkbox";
-import React, { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
-import { Button, Image, Keyboard, ScrollView, Switch, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Controller, SubmitHandler, useForm } from "react-hook-form";
+import { Button, Image, Keyboard, ScrollView, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import Modal from "react-native-modal";
-import { z } from "zod";
+import Toast from "react-native-toast-message";
 
 const platformIconMap = {
   facebook: "facebook",
@@ -18,44 +21,63 @@ const platformIconMap = {
   threads: "threads",
 };
 
+const checkBoxColor = "#2563eb";
+
 export const getPlatformIcon = (platform: string, size?: number, color?: string) => {
   return <FontAwesome6 name={platformIconMap[platform as keyof typeof platformIconMap]} size={size ?? 20} color={color ?? "black"} />;
 };
 
-const createPostSchema = z.object({
-  type: z.enum(["Post", "Story", "Reel"]),
-  desc: z.string().min(1, "Description is required"),
-  scheduled: z.boolean(),
-  checkedAccounts: z.array(z.string()),
-});
-
-type CreatePostSchema = z.infer<typeof createPostSchema>;
-
-const CreatePostModal = ({ isModalVisible, setModalVisible }: { isModalVisible: boolean; setModalVisible: (bool: boolean) => void }) => {
+const CreatePostModal = ({
+  isModalVisible,
+  setModalVisible,
+  dateActive,
+}: {
+  isModalVisible: boolean;
+  setModalVisible: (bool: boolean) => void;
+  dateActive: Date;
+}) => {
   const { data } = useCredential();
   const credentials = data?.data?.data;
+  const { post, setPost } = useAppContext();
   const [showAIModal, setShowAIModal] = useState(false);
   const [aiInput, setAIInput] = useState("");
+
   const { mutateAsync: generateAIContent, isPending: isGeneratingAIContent } = useGenerateAIContent();
+  const { mutateAsync: createPost, isPending: isCreatingPost } = useCreatePostMutation();
 
   const {
     control,
     handleSubmit,
     setValue,
     watch,
+    reset,
     formState: { errors },
   } = useForm<CreatePostSchema>({
     defaultValues: {
       type: "Post",
       desc: "",
-      scheduled: false,
       checkedAccounts: [],
+      dateTime: dateActive ?? new Date(),
     },
     resolver: zodResolver(createPostSchema),
   });
 
+  useEffect(() => {
+    setValue("dateTime", dateActive ?? new Date());
+  }, [dateActive, setValue]);
+
+  useEffect(() => {
+    if (post) {
+      setValue("desc", post.metadata.content);
+      setValue("type", post.metadata.type as "Post" | "Story" | "Reel");
+      setValue("checkedAccounts", [post.socialCredentialID]);
+      setValue("dateTime", new Date(post.publicationTime));
+    }
+  }, [post, setValue]);
+
   const desc = watch("desc");
   const checkedAccounts = watch("checkedAccounts");
+  const dateTime = watch("dateTime");
   const allIds = credentials?.map((acc) => acc.id) ?? [];
   const isAllChecked = allIds.length > 0 && allIds.every((id) => checkedAccounts.includes(id));
 
@@ -69,18 +91,51 @@ const CreatePostModal = ({ isModalVisible, setModalVisible }: { isModalVisible: 
     setShowAIModal(false);
   };
 
-  const onSubmit = (data: CreatePostSchema) => {
-    // Xử lý submit ở đây
-    setModalVisible(false);
+  const onSubmit: SubmitHandler<CreatePostSchema> = async (data) => {
+    if (isCreatingPost) return;
+    try {
+      const { dateTime } = data;
+      const selectedCredentials = credentials?.filter((acc) => checkedAccounts.includes(acc.id));
+      const createPostBody = {
+        publicationTime: dateTime.toISOString(),
+        socialPosts:
+          selectedCredentials?.map((acc) => ({
+            platform: acc.platform,
+            socialCredentialID: acc.id,
+            metadata: {
+              type: data.type as string,
+              content: data.desc,
+              assets: [],
+            },
+          })) ?? [],
+      };
+      await createPost(createPostBody);
+      Toast.show({
+        type: "success",
+        text1: "Success",
+        text2: "Post created successfully",
+      });
+      setModalVisible(false);
+      reset();
+    } catch (error) {
+      console.log("error: ", error);
+    }
   };
 
   return (
-    <Modal isVisible={isModalVisible} onBackdropPress={() => setModalVisible(false)}>
+    <Modal
+      isVisible={isModalVisible}
+      onBackdropPress={() => {
+        setModalVisible(false);
+        setPost(undefined);
+        reset();
+      }}
+    >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView className="bg-white rounded-lg p-4 max-h-[90%]">
           <Text className="font-bold text-lg mb-2">Schedule Post</Text>
           <View className="flex flex-row gap-2 items-center mb-3">
-            <Checkbox value={isAllChecked} onValueChange={handleCheckAll} color="#2563eb" />
+            <Checkbox value={isAllChecked} onValueChange={handleCheckAll} color={checkBoxColor} />
             <Text className="text-gray-500 text-sm">Schedule all</Text>
           </View>
 
@@ -102,7 +157,7 @@ const CreatePostModal = ({ isModalVisible, setModalVisible }: { isModalVisible: 
                             onChange(value.filter((id) => id !== acc.id));
                           }
                         }}
-                        color="#2563eb"
+                        color={checkBoxColor}
                       />
                     );
                   }}
@@ -114,12 +169,11 @@ const CreatePostModal = ({ isModalVisible, setModalVisible }: { isModalVisible: 
                     <Text className="text-white font-bold">{acc.metadata.name[0]}</Text>
                   </View>
                 )}
-                <Text style={{ fontWeight: "500", marginRight: 4 }}>{acc.metadata.name}</Text>
+                <Text className="font-medium mr-1">{acc.metadata.name}</Text>
                 {getPlatformIcon(acc.platform)}
               </View>
             ))}
           </ScrollView>
-          {/* type */}
           <Text className="text-sm font-medium mb-2">Type *</Text>
           <Controller
             control={control}
@@ -138,7 +192,6 @@ const CreatePostModal = ({ isModalVisible, setModalVisible }: { isModalVisible: 
               </View>
             )}
           />
-          {/* description */}
           <Text className="text-sm font-medium mb-2">Description *</Text>
           <Controller
             control={control}
@@ -155,7 +208,6 @@ const CreatePostModal = ({ isModalVisible, setModalVisible }: { isModalVisible: 
             )}
           />
           {errors.desc && <Text className="text-red-500 text-xs mb-2">{errors.desc.message}</Text>}
-          {/* AI Generate button */}
           <TouchableOpacity className="flex flex-row items-center mt-2 mb-4" onPress={() => setShowAIModal(true)}>
             <Text className="text-blue-500 mr-1">✨</Text>
             <Text className="text-blue-500 font-medium">AI Generate</Text>
@@ -165,20 +217,31 @@ const CreatePostModal = ({ isModalVisible, setModalVisible }: { isModalVisible: 
           <View className="h-10 bg-gray-200 rounded-md mb-3 justify-center items-center">
             <Text className="text-gray-500">Not supported</Text>
           </View>
-          {/* date */}
           <Text className="text-sm font-medium mb-2">Date</Text>
           <View className="flex flex-row justify-between items-center mb-3">
-            <View className="flex flex-row items-center">
-              <Text>05/23/2025</Text>
-              <Text className="mx-2">-</Text>
-              <Text>01:15 AM</Text>
-            </View>
-            <View className="flex flex-row items-center gap-2">
-              <Text>Recurring</Text>
-              <Controller
-                control={control}
-                name="scheduled"
-                render={({ field: { value, onChange } }) => <Switch value={value} onValueChange={onChange} />}
+            <View className="flex flex-row items-center -ml-2">
+              <DateTimePicker
+                value={dateTime}
+                mode={"date"}
+                onChange={(e, selectedDate) => {
+                  if (selectedDate) {
+                    const newDate = new Date(dateTime);
+                    newDate.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+                    setValue("dateTime", newDate, { shouldValidate: true });
+                  }
+                }}
+              />
+              <DateTimePicker
+                value={dateTime}
+                mode={"time"}
+                is24Hour={true}
+                onChange={(e, selectedTime) => {
+                  if (selectedTime) {
+                    const newDate = new Date(dateTime);
+                    newDate.setHours(selectedTime.getHours(), selectedTime.getMinutes());
+                    setValue("dateTime", newDate, { shouldValidate: true });
+                  }
+                }}
               />
             </View>
           </View>
@@ -186,6 +249,9 @@ const CreatePostModal = ({ isModalVisible, setModalVisible }: { isModalVisible: 
           <View className="mt-4 border border-gray-300 rounded-md p-4 bg-gray-50">
             <View className="flex flex-row items-center mb-2 gap-2">
               {(() => {
+                {
+                  /* temporary avatar */
+                }
                 const selected = credentials?.[0];
                 if (selected?.metadata.avatar_url) {
                   return <Image source={{ uri: selected.metadata.avatar_url }} className="size-10 rounded-full" />;
@@ -206,24 +272,21 @@ const CreatePostModal = ({ isModalVisible, setModalVisible }: { isModalVisible: 
               <Text className="text-gray-700 mb-4">{desc || "Your description will appear here..."}</Text>
             </ScrollView>
             <View className="flex flex-row justify-around border-t border-gray-300 pt-2">
-              <View className="flex flex-row items-center gap-1">
-                <FontAwesome6 name="heart" size={15} color="gray" />
-                <Text className="text-gray-500 text-sm">Like</Text>
-              </View>
-              <View className="flex flex-row items-center gap-1">
-                <FontAwesome6 name="commenting" size={15} color="gray" />
-                <Text className="text-gray-500 text-sm">Comment</Text>
-              </View>
-              <View className="flex flex-row items-center gap-1">
-                <FontAwesome5 name="share-square" size={15} color="gray" />
-                <Text className="text-gray-500 text-sm">Share</Text>
-              </View>
+              {[
+                { icon: "heart", label: "Like" },
+                { icon: "commenting", label: "Comment" },
+                { icon: "share-square", label: "Share" },
+              ].map((item) => (
+                <View className="flex flex-row items-center gap-1" key={item.label}>
+                  <FontAwesome6 name={item.icon} size={15} color="gray" />
+                  <Text className="text-gray-500 text-sm">{item.label}</Text>
+                </View>
+              ))}
             </View>
           </View>
-          {/* action button */}
           <View className="mt-2 pb-4">
-            <Button title="Schedule post" onPress={handleSubmit(onSubmit)} />
-            <TouchableOpacity onPress={() => setModalVisible(false)} style={{ marginTop: 12, alignItems: "center" }}>
+            <Button title="Schedule post" onPress={handleSubmit(onSubmit)} disabled={isCreatingPost} />
+            <TouchableOpacity onPress={() => setModalVisible(false)} className="mt-2 items-center">
               <Text className="text-gray-500">Cancel</Text>
             </TouchableOpacity>
           </View>

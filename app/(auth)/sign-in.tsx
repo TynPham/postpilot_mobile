@@ -1,4 +1,6 @@
 import Input from "@/components/input";
+import { TEMPLATE_TOKEN } from "@/constants";
+import path from "@/constants/path";
 import { TOKEN_KEY } from "@/constants/token";
 import { signInSchema, SignInSchema } from "@/schema-validations/auth";
 import { setSecureStore } from "@/utils/secure-store";
@@ -44,11 +46,11 @@ export default function SignInScreen() {
 
       if (signInAttempt.status === "complete") {
         await setActive({ session: signInAttempt.createdSessionId });
-        const token = await getToken();
+        const token = await getToken({ template: TEMPLATE_TOKEN });
         if (token) {
           await setSecureStore(TOKEN_KEY, token);
         }
-        router.push("/");
+        router.navigate(path.home);
       } else {
         console.error(JSON.stringify(signInAttempt, null, 2));
         setError("Something went wrong. Please try again.");
@@ -72,21 +74,17 @@ export default function SignInScreen() {
     <View className="flex-1 bg-white">
       <ScrollView className="flex-1">
         <View className="flex-1 px-6 pt-12 min-h-screen justify-center">
-          {/* Header */}
           <View className="items-center mb-12">
-            {/* <Image source={require("@/assets/images/logo.png")} className="w-24 h-24 mb-4" resizeMode="contain" />s */}
             <Text className="text-2xl font-bold text-gray-900">Welcome Back</Text>
             <Text className="text-gray-500 mt-2">Sign in to continue</Text>
           </View>
 
-          {/* Error Message */}
-          {error ? (
+          {error && (
             <View className="bg-red-50 p-4 rounded-lg mb-4">
               <Text className="text-red-500 text-center">{error}</Text>
             </View>
-          ) : null}
+          )}
 
-          {/* Form */}
           <View className="flex flex-col gap-4">
             <Input
               label="Email"
@@ -116,10 +114,9 @@ export default function SignInScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Footer */}
           <View className="flex-row justify-center mt-8">
             <Text className="text-gray-500">Don&apos;t have an account? </Text>
-            <TouchableOpacity onPress={() => router.push("/sign-up")} disabled={loading}>
+            <TouchableOpacity onPress={() => router.navigate(path.signUp)} disabled={loading}>
               <Text className="text-blue-500 font-semibold">Sign Up</Text>
             </TouchableOpacity>
           </View>

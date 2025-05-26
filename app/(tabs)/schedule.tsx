@@ -1,20 +1,23 @@
 import CreatePostModal, { getPlatformIcon } from "@/components/schedules/create-post-modal";
+import { useAppContext } from "@/contexts/app-context";
 import { useGetPosts } from "@/hooks/usePost";
+import { cn } from "@/lib/utils";
 import React, { useState } from "react";
-import { Button, Dimensions, Text, TouchableOpacity, View } from "react-native";
+import { Dimensions, Text, TouchableOpacity, View } from "react-native";
 import { Calendar, Mode } from "react-native-big-calendar";
+import Toast from "react-native-toast-message";
 
-const CalendarScreen = () => {
+const switchMode = ["day", "week", "month"];
+
+const ScheduleScreen = () => {
   const { data } = useGetPosts();
   const posts = data?.data?.data;
-
   const events =
     posts?.map((post) => ({
+      ...post,
       title: post.metadata.content,
       start: new Date(post.publicationTime),
       end: new Date(post.publicationTime),
-      platform: post.platform,
-      id: post.id,
     })) ?? [];
 
   const normalizedEvents = events.map((ev) => {
@@ -27,8 +30,10 @@ const CalendarScreen = () => {
     return ev;
   });
 
+  const { setPost } = useAppContext();
   const [mode, setMode] = useState<Mode>("week");
   const [date, setDate] = useState(new Date());
+  const [dateActive, setDateActive] = useState<Date>(new Date());
   const [isModalVisible, setModalVisible] = useState(false);
 
   const onSetModalVisible = (bool: boolean) => {
@@ -43,11 +48,27 @@ const CalendarScreen = () => {
   };
 
   const handlePressCell = (date: Date) => {
+    if (date < new Date()) {
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "You cannot create a post in the past",
+      });
+      return;
+    }
+    setDateActive(date);
+    setModalVisible(true);
+  };
+
+  const handlePressEvent = (event: any) => {
+    const { start, end, title, ...post } = event;
+    setPost({
+      ...post,
+    });
     setModalVisible(true);
   };
 
   const renderEvent = (event: any, touchableOpacityProps: any) => {
-    console.log(event);
     const { key, ...restProps } = touchableOpacityProps || {};
     return (
       <TouchableOpacity
@@ -56,10 +77,6 @@ const CalendarScreen = () => {
         style={[
           ...(Array.isArray(restProps.style) ? restProps.style : [restProps.style]),
           {
-            // backgroundColor: event.overlapPosition === 0 ? "#ef4444" : "#3b82f6",
-            // borderRadius: 8,
-            // padding: 8,
-            // zIndex: 100 + (event.overlapPosition ?? 0),
             height: "max-content",
           },
         ]}
@@ -74,10 +91,14 @@ const CalendarScreen = () => {
   return (
     <View>
       <View style={{ flexDirection: "row", justifyContent: "space-around" }}>
-        <Button title="Today" onPress={goToToday} />
-        <Button title="Day" onPress={() => handleModeChange("day")} />
-        <Button title="Week" onPress={() => handleModeChange("week")} />
-        <Button title="Month" onPress={() => handleModeChange("month")} />
+        <TouchableOpacity onPress={goToToday} className="p-2">
+          <Text>Today</Text>
+        </TouchableOpacity>
+        {switchMode.map((m) => (
+          <TouchableOpacity key={m} onPress={() => handleModeChange(m as Mode)} className="p-2">
+            <Text className={cn(mode === m && "text-primary")}>{m.charAt(0).toUpperCase() + m.slice(1)}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
       <Calendar
         events={normalizedEvents}
@@ -87,11 +108,12 @@ const CalendarScreen = () => {
         onPressCell={handlePressCell}
         overlapOffset={15}
         renderEvent={renderEvent}
+        onPressEvent={handlePressEvent}
       />
 
-      <CreatePostModal isModalVisible={isModalVisible} setModalVisible={onSetModalVisible} />
+      <CreatePostModal isModalVisible={isModalVisible} setModalVisible={onSetModalVisible} dateActive={dateActive} />
     </View>
   );
 };
 
-export default CalendarScreen;
+export default ScheduleScreen;

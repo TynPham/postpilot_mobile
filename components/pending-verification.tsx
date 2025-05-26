@@ -1,3 +1,5 @@
+import { TEMPLATE_TOKEN } from "@/constants";
+import path from "@/constants/path";
 import { TOKEN_KEY } from "@/constants/token";
 import { verifyEmailSchema, VerifyEmailSchema } from "@/schema-validations/auth";
 import { setSecureStore } from "@/utils/secure-store";
@@ -21,7 +23,6 @@ const PendingVerification = () => {
     control: verifyEmailControl,
     handleSubmit: verifyEmailHandleSubmit,
     formState: { errors: verifyEmailErrors },
-    reset: resetVerifyEmail,
   } = useForm<VerifyEmailSchema>({
     defaultValues: { code: "" },
     resolver: zodResolver(verifyEmailSchema),
@@ -40,11 +41,11 @@ const PendingVerification = () => {
 
       if (signUpAttempt.status === "complete") {
         await setActive({ session: signUpAttempt.createdSessionId });
-        const token = await getToken();
+        const token = await getToken({ template: TEMPLATE_TOKEN });
         if (token) {
           await setSecureStore(TOKEN_KEY, token);
         }
-        router.push("/");
+        router.navigate(path.home);
       } else {
         console.error(JSON.stringify(signUpAttempt, null, 2));
         setError("Something went wrong. Please try again.");
@@ -61,20 +62,17 @@ const PendingVerification = () => {
     <View className="flex-1 bg-white">
       <ScrollView className="flex-1">
         <View className="flex-1 px-6 pt-12 min-h-screen justify-center">
-          {/* Header */}
           <View className="items-center mb-12">
             <Text className="text-2xl font-bold text-gray-900">Verify Email</Text>
             <Text className="text-gray-500 mt-2">Enter the code sent to your email</Text>
           </View>
 
-          {/* Error Message */}
-          {error ? (
+          {error && (
             <View className="bg-red-50 p-4 rounded-lg mb-4">
               <Text className="text-red-500 text-center">{error}</Text>
             </View>
-          ) : null}
+          )}
 
-          {/* Verification Form */}
           <View className="flex flex-col gap-6">
             <Input
               label="Verification Code"

@@ -1,5 +1,6 @@
 import Input from "@/components/input";
 import PendingVerification from "@/components/pending-verification";
+import path from "@/constants/path";
 import { signUpSchema, SignUpSchema } from "@/schema-validations/auth";
 import { useSignUp } from "@clerk/clerk-expo";
 
@@ -69,20 +70,17 @@ export default function SignUpScreen() {
     <View className="flex-1 bg-white">
       <ScrollView className="flex-1">
         <View className="flex-1 px-6 pt-12 min-h-screen justify-center">
-          {/* Header */}
           <View className="items-center mb-12">
             <Text className="text-2xl font-bold text-gray-900">Create Account</Text>
             <Text className="text-gray-500 mt-2">Sign up to get started</Text>
           </View>
 
-          {/* Error Message */}
-          {error ? (
+          {error && (
             <View className="bg-red-50 p-4 rounded-lg mb-4">
               <Text className="text-red-500 text-center">{error}</Text>
             </View>
-          ) : null}
+          )}
 
-          {/* Form */}
           <View className="flex flex-col gap-4">
             <Input label="Username" name="username" control={control} errorMessage={errors.username?.message} placeholder="Enter your username" />
 
@@ -116,10 +114,9 @@ export default function SignUpScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Footer */}
           <View className="flex-row justify-center mt-8">
             <Text className="text-gray-500">Already have an account? </Text>
-            <TouchableOpacity onPress={() => router.push("/sign-in")} disabled={loading}>
+            <TouchableOpacity onPress={() => router.navigate(path.signIn)} disabled={loading}>
               <Text className="text-blue-500 font-semibold">Sign In</Text>
             </TouchableOpacity>
           </View>

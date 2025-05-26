@@ -33,3 +33,19 @@ export type Post = {
   recurringPostId?: string;
   recurringPost?: any;
 };
+
+export type CreatePostRequest = {
+  publicationTime: string;
+  socialPosts: {
+    platform: string;
+    socialCredentialID: string;
+    metadata: {
+      type: string;
+      content: string;
+      assets: {
+        type: string;
+        url: string;
+      }[];
+    };
+  }[];
+};
