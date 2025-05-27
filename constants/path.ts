@@ -1,6 +1,8 @@
 const path = {
   home: "/",
-  calendar: "/calendar",
+  "(tabs)": "/(tabs)",
+  "(auth)": "/(auth)",
+  schedule: "/schedule",
   settings: "/settings",
   connect: "/connect",
   bot: "/bot",

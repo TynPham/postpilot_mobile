@@ -2,8 +2,10 @@ import Input from "@/components/input";
 import { TEMPLATE_TOKEN } from "@/constants";
 import path from "@/constants/path";
 import { TOKEN_KEY } from "@/constants/token";
+import { useAppContext } from "@/contexts/app-context";
 import { signInSchema, SignInSchema } from "@/schema-validations/auth";
 import { setSecureStore } from "@/utils/secure-store";
+
 import { useAuth, useSignIn } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,6 +21,7 @@ export default function SignInScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { setToken } = useAppContext();
 
   const {
     control,
@@ -46,11 +49,13 @@ export default function SignInScreen() {
 
       if (signInAttempt.status === "complete") {
         await setActive({ session: signInAttempt.createdSessionId });
+
         const token = await getToken({ template: TEMPLATE_TOKEN });
         if (token) {
           await setSecureStore(TOKEN_KEY, token);
+          setToken(token);
+          router.replace(path.schedule);
         }
-        router.navigate(path.home);
       } else {
         console.error(JSON.stringify(signInAttempt, null, 2));
         setError("Something went wrong. Please try again.");

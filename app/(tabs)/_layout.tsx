@@ -1,5 +1,5 @@
 import path from "@/constants/path";
-import { useAuth } from "@clerk/clerk-expo";
+import { useAppContext } from "@/contexts/app-context";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import Feather from "@expo/vector-icons/Feather";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
@@ -36,9 +36,8 @@ const TabBarIcon = ({ focused, name }: { focused: boolean; name: string }) => {
 };
 
 const TabLayout = () => {
-  const { isSignedIn } = useAuth();
-
-  if (!isSignedIn) {
+  const { token } = useAppContext();
+  if (!token) {
     return <Redirect href={path.signIn} />;
   }
   return (

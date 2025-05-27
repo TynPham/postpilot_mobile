@@ -1,4 +1,6 @@
+import path from "@/constants/path";
 import { TOKEN_KEY } from "@/constants/token";
+import { useAppContext } from "@/contexts/app-context";
 import { deleteSecureStore } from "@/utils/secure-store";
 import { useClerk } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
@@ -11,6 +13,7 @@ export const SignOutButton = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const { setToken } = useAppContext();
 
   const handleSignOut = async () => {
     try {
@@ -18,7 +21,8 @@ export const SignOutButton = () => {
       setError("");
       await signOut();
       await deleteSecureStore(TOKEN_KEY);
-      router.navigate("/sign-in");
+      setToken(null);
+      router.replace(path.signIn);
     } catch (err: any) {
       // See https://clerk.com/docs/custom-flows/error-handling
       // for more info on error handling

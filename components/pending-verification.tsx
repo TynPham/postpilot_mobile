@@ -1,11 +1,9 @@
 import { TEMPLATE_TOKEN } from "@/constants";
-import path from "@/constants/path";
 import { TOKEN_KEY } from "@/constants/token";
 import { verifyEmailSchema, VerifyEmailSchema } from "@/schema-validations/auth";
 import { setSecureStore } from "@/utils/secure-store";
 import { useAuth, useSignUp } from "@clerk/clerk-expo";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { router } from "expo-router";
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from "react-native";
@@ -45,7 +43,6 @@ const PendingVerification = () => {
         if (token) {
           await setSecureStore(TOKEN_KEY, token);
         }
-        router.navigate(path.home);
       } else {
         console.error(JSON.stringify(signUpAttempt, null, 2));
         setError("Something went wrong. Please try again.");
