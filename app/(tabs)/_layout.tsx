@@ -1,3 +1,4 @@
+import { ACTIVE_TAB_COLOR } from "@/constants";
 import path from "@/constants/path";
 import { useAppContext } from "@/contexts/app-context";
 import AntDesign from "@expo/vector-icons/AntDesign";
@@ -6,8 +7,6 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { Redirect, Tabs } from "expo-router";
 import React from "react";
 import { View } from "react-native";
-
-const ACTIVE_TAB_COLOR = "hsl(215.24, 98.1%, 58.82%)";
 
 const getTabBarIcon = (name: string, focused: boolean) => {
   const styleIcon = {

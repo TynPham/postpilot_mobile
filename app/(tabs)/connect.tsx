@@ -1,7 +1,9 @@
 import ConnectTab from "@/components/connect/connect-tab";
-import { cn } from "@/lib/utils";
+import { ACTIVE_TAB_COLOR } from "@/constants";
+import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
+import { useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
-import { Modal, Text, TouchableOpacity, View } from "react-native";
+import { Dimensions, Text, View } from "react-native";
 
 const TABS = [
   { key: "facebook", label: "Facebook" },
@@ -10,73 +12,17 @@ const TABS = [
   { key: "instagram", label: "Instagram" },
 ];
 
-const ACCOUNTS_BY_PLATFORM: Record<string, { id: number; name: string; avatar: string | null; posts: number }[]> = {
-  facebook: [
-    {
-      id: 1,
-      name: "Mang tien ve cho me",
-      avatar: "https://i.imgur.com/0y0y0y0.png",
-      posts: 3,
-    },
-    {
-      id: 2,
-      name: "Ve que an tet",
-      avatar: null,
-      posts: 1,
-    },
-  ],
-  threads: [
-    {
-      id: 3,
-      name: "Threader",
-      avatar: null,
-      posts: 2,
-    },
-  ],
-  x: [
-    {
-      id: 4,
-      name: "Xman",
-      avatar: null,
-      posts: 5,
-    },
-  ],
-  instagram: [
-    {
-      id: 5,
-      name: "Insta Life",
-      avatar: null,
-      posts: 4,
-    },
-  ],
-};
+const Tab = createMaterialTopTabNavigator();
 
-const MAX_VISIBLE_TABS = 3;
+const width = Dimensions.get("window").width;
+
+const paddingContainer = 16;
 
 const ConnectScreen = () => {
-  const [tabOrder, setTabOrder] = useState(TABS.map((t) => t.key));
-  const [activeTab, setActiveTab] = useState(TABS[0].key);
-  const [showMore, setShowMore] = useState(false);
-
-  const visibleTabs = tabOrder
-    .slice(0, MAX_VISIBLE_TABS)
-    .map((key) => TABS.find((t) => t.key === key))
-    .filter(Boolean);
-  const moreTabs = tabOrder
-    .slice(MAX_VISIBLE_TABS)
-    .map((key) => TABS.find((t) => t.key === key))
-    .filter(Boolean);
-
-  const handleSelectMoreTab = (tabKey: string) => {
-    const newOrder = [tabKey, ...tabOrder.filter((k) => k !== tabKey)];
-    setTabOrder(newOrder);
-    setActiveTab(tabKey);
-    setShowMore(false);
-  };
-
-  // Lấy danh sách account theo activeTab
-  const accounts = ACCOUNTS_BY_PLATFORM[activeTab] || [];
-
+  const [headerTabWidth, setHeaderTabWidth] = useState(0);
+  const isScrollable = headerTabWidth > width - paddingContainer;
+  const params = useLocalSearchParams();
+  const initialTab = (params.tab as string) || TABS[0].label;
   return (
     <View className="flex-1 bg-[#e5edf5] p-6 flex flex-col gap-8">
       {/* Header */}
@@ -86,43 +32,39 @@ const ConnectScreen = () => {
       </View>
 
       {/* Tabs */}
-      <View className="flex flex-row bg-[#d1deeb] rounded-lg overflow-hidden">
-        {visibleTabs.map((tab) =>
-          tab ? (
-            <TouchableOpacity key={tab.key} className={cn("w-1/4 py-3", activeTab === tab.key && "bg-white")} onPress={() => setActiveTab(tab.key)}>
-              <Text className={cn("text-gray-900 text-center", activeTab === tab.key && "font-bold")}>{tab.label}</Text>
-            </TouchableOpacity>
-          ) : null
-        )}
-        {moreTabs.length > 0 && (
-          <TouchableOpacity
-            className="w-1/4 py-3"
-            style={{ backgroundColor: showMore ? "#fff" : "#d1deeb", paddingVertical: 10, alignItems: "center" }}
-            onPress={() => setShowMore(true)}
-          >
-            <Text className={cn("text-gray-900 text-center", showMore && "font-bold")}>More ...</Text>
-          </TouchableOpacity>
-        )}
+      <View className="flex-1" onLayout={(e) => setHeaderTabWidth(e.nativeEvent.layout.width)}>
+        <Tab.Navigator
+          initialRouteName={initialTab}
+          screenOptions={{
+            tabBarStyle: { backgroundColor: "#d1deeb", borderTopLeftRadius: 8, borderTopRightRadius: 8 },
+            tabBarIndicatorStyle: { backgroundColor: ACTIVE_TAB_COLOR },
+            tabBarLabelStyle: {
+              color: "#000",
+              textTransform: "none",
+              flexShrink: 1,
+              flexWrap: "nowrap",
+            },
+            tabBarItemStyle: isScrollable ? { width: "auto", paddingHorizontal: 16 } : { paddingHorizontal: 16 },
+            tabBarScrollEnabled: isScrollable,
+          }}
+        >
+          {TABS.map((tab, index) => (
+            <Tab.Screen
+              key={tab.key}
+              name={tab.label}
+              options={{
+                tabBarLabel: ({ focused }) => (
+                  <View>
+                    <Text style={{ fontWeight: focused ? "bold" : "normal" }}>{tab.label}</Text>
+                  </View>
+                ),
+              }}
+            >
+              {() => <ConnectTab platform={tab.key} />}
+            </Tab.Screen>
+          ))}
+        </Tab.Navigator>
       </View>
-
-      {/* More Modal */}
-      <Modal visible={showMore} transparent animationType="fade">
-        <TouchableOpacity style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.2)" }} onPress={() => setShowMore(false)}>
-          <View style={{ position: "absolute", top: 120, left: 40, right: 40, backgroundColor: "#fff", borderRadius: 12, padding: 16, elevation: 5 }}>
-            <Text style={{ fontWeight: "bold", fontSize: 16, marginBottom: 12 }}>More Platforms</Text>
-            {moreTabs.map((tab) =>
-              tab ? (
-                <TouchableOpacity key={tab.key} style={{ paddingVertical: 10 }} onPress={() => handleSelectMoreTab(tab.key)}>
-                  <Text style={{ color: "#222", fontWeight: activeTab === tab.key ? "bold" : "normal" }}>{tab.label}</Text>
-                </TouchableOpacity>
-              ) : null
-            )}
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* Content */}
-      <ConnectTab platform={activeTab} />
     </View>
   );
 };

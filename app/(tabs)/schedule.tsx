@@ -2,17 +2,41 @@ import CreatePostModal, { getPlatformIcon } from "@/components/schedules/create-
 import { useAppContext } from "@/contexts/app-context";
 import { useGetPosts } from "@/hooks/usePost";
 import { cn } from "@/lib/utils";
+import { Post } from "@/types/post";
 import React, { useState } from "react";
 import { Dimensions, Text, TouchableOpacity, View } from "react-native";
-import { Calendar, Mode } from "react-native-big-calendar";
+import { Calendar, CalendarTouchableOpacityProps, ICalendarEventBase, Mode } from "react-native-big-calendar";
 import Toast from "react-native-toast-message";
 
 const switchMode = ["day", "week", "month"];
 
+export interface PostEvent extends ICalendarEventBase, Post {}
+
+const renderEvent = <T extends ICalendarEventBase>(event: T, touchableOpacityProps: CalendarTouchableOpacityProps) => {
+  const { key, ...restProps } = touchableOpacityProps || {};
+  return (
+    <TouchableOpacity
+      key={key}
+      {...restProps}
+      style={[
+        ...(Array.isArray(restProps.style) ? restProps.style : [restProps.style]),
+        {
+          height: "auto",
+        },
+      ]}
+    >
+      <View className="flex-row items-center gap-1">
+        {getPlatformIcon((event as any).platform, 10, "white")}
+        <Text className="text-xs text-white line-clamp-1">{event.title}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
 const ScheduleScreen = () => {
   const { data } = useGetPosts();
   const posts = data?.data?.data;
-  const events =
+  const events: PostEvent[] =
     posts?.map((post) => ({
       ...post,
       title: post.metadata.content,
@@ -24,7 +48,7 @@ const ScheduleScreen = () => {
     if (ev.start.getTime() === ev.end.getTime()) {
       return {
         ...ev,
-        end: new Date(ev.end.getTime() + 1000),
+        end: new Date(ev.end.getTime() + 100),
       };
     }
     return ev;
@@ -61,33 +85,18 @@ const ScheduleScreen = () => {
   };
 
   const handlePressEvent = (event: any) => {
-    const { start, end, title, ...post } = event;
-    setPost({
-      ...post,
-    });
+    if (!event || !event.metadata) {
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Invalid event data",
+      });
+      return;
+    }
+    setPost(event);
     setModalVisible(true);
   };
 
-  const renderEvent = (event: any, touchableOpacityProps: any) => {
-    const { key, ...restProps } = touchableOpacityProps || {};
-    return (
-      <TouchableOpacity
-        key={key}
-        {...restProps}
-        style={[
-          ...(Array.isArray(restProps.style) ? restProps.style : [restProps.style]),
-          {
-            height: "max-content",
-          },
-        ]}
-      >
-        <View className="flex-row items-center gap-1">
-          {getPlatformIcon(event.platform, 10, "white")}
-          <Text className="text-xs text-white line-clamp-1">{event.title}</Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
   return (
     <View>
       <View style={{ flexDirection: "row", justifyContent: "space-around" }}>
@@ -100,7 +109,7 @@ const ScheduleScreen = () => {
           </TouchableOpacity>
         ))}
       </View>
-      <Calendar
+      <Calendar<PostEvent>
         events={normalizedEvents}
         height={Dimensions.get("window").height - 170}
         mode={mode}

@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { createPostSchema, CreatePostSchema } from "@/schema-validations/post";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import { zodResolver } from "@hookform/resolvers/zod";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import Checkbox from "expo-checkbox";
 import React, { useEffect, useState } from "react";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
@@ -67,8 +67,8 @@ const CreatePostModal = ({
   }, [dateActive, setValue]);
 
   useEffect(() => {
-    if (post) {
-      setValue("desc", post.metadata.content);
+    if (post && post.metadata) {
+      setValue("desc", post.metadata.content || "");
       setValue("type", post.metadata.type as "Post" | "Story" | "Reel");
       setValue("checkedAccounts", [post.socialCredentialID]);
       setValue("dateTime", new Date(post.publicationTime));
@@ -95,6 +95,7 @@ const CreatePostModal = ({
     if (isCreatingPost) return;
     try {
       const { dateTime } = data;
+      dateTime.setSeconds(0);
       const selectedCredentials = credentials?.filter((acc) => checkedAccounts.includes(acc.id));
       const createPostBody = {
         publicationTime: dateTime.toISOString(),
@@ -120,6 +121,35 @@ const CreatePostModal = ({
     } catch (error) {
       console.log("error: ", error);
     }
+  };
+
+  const showDatePicker = () => {
+    DateTimePickerAndroid.open({
+      value: dateTime,
+      mode: "date",
+      onChange: (event, selectedDate) => {
+        if (selectedDate) {
+          const newDate = new Date(dateTime);
+          newDate.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+          setValue("dateTime", newDate, { shouldValidate: true });
+        }
+      },
+    });
+  };
+
+  const showTimePicker = () => {
+    DateTimePickerAndroid.open({
+      value: dateTime,
+      mode: "time",
+      is24Hour: true,
+      onChange: (event, selectedTime) => {
+        if (selectedTime) {
+          const newDate = new Date(dateTime);
+          newDate.setHours(selectedTime.getHours(), selectedTime.getMinutes());
+          setValue("dateTime", newDate, { shouldValidate: true });
+        }
+      },
+    });
   };
 
   return (
@@ -220,29 +250,12 @@ const CreatePostModal = ({
           <Text className="text-sm font-medium mb-2">Date</Text>
           <View className="flex flex-row justify-between items-center mb-3">
             <View className="flex flex-row items-center -ml-2">
-              <DateTimePicker
-                value={dateTime}
-                mode={"date"}
-                onChange={(e, selectedDate) => {
-                  if (selectedDate) {
-                    const newDate = new Date(dateTime);
-                    newDate.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
-                    setValue("dateTime", newDate, { shouldValidate: true });
-                  }
-                }}
-              />
-              <DateTimePicker
-                value={dateTime}
-                mode={"time"}
-                is24Hour={true}
-                onChange={(e, selectedTime) => {
-                  if (selectedTime) {
-                    const newDate = new Date(dateTime);
-                    newDate.setHours(selectedTime.getHours(), selectedTime.getMinutes());
-                    setValue("dateTime", newDate, { shouldValidate: true });
-                  }
-                }}
-              />
+              <TouchableOpacity onPress={showDatePicker} className="mr-2 bg-gray-100 px-3 py-2 rounded-md">
+                <Text>{dateTime.toLocaleDateString()}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={showTimePicker} className="bg-gray-100 px-3 py-2 rounded-md">
+                <Text>{dateTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}</Text>
+              </TouchableOpacity>
             </View>
           </View>
           {/* preview post */}
@@ -252,7 +265,7 @@ const CreatePostModal = ({
                 {
                   /* temporary avatar */
                 }
-                const selected = credentials?.[0];
+                const selected = credentials?.find((acc) => checkedAccounts.includes(acc.id)) || credentials?.[0];
                 if (selected?.metadata.avatar_url) {
                   return <Image source={{ uri: selected.metadata.avatar_url }} className="size-10 rounded-full" />;
                 } else {
@@ -264,8 +277,12 @@ const CreatePostModal = ({
                 }
               })()}
               <View>
-                <Text className="font-bold text-base">{credentials?.[0]?.metadata.name ?? "Admin"}</Text>
-                <Text className="text-gray-500 text-sm">01:15</Text>
+                <Text className="font-bold text-base">
+                  {credentials?.find((acc) => checkedAccounts.includes(acc.id))?.metadata.name || credentials?.[0]?.metadata.name}
+                </Text>
+                <Text className="text-gray-500 text-sm">
+                  {dateTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}
+                </Text>
               </View>
             </View>
             <ScrollView className="max-h-40">
@@ -286,7 +303,7 @@ const CreatePostModal = ({
           </View>
           <View className="mt-2 pb-4">
             <Button title="Schedule post" onPress={handleSubmit(onSubmit)} disabled={isCreatingPost} />
-            <TouchableOpacity onPress={() => setModalVisible(false)} className="mt-2 items-center">
+            <TouchableOpacity onPress={() => setModalVisible(false)} className="items-center p-4">
               <Text className="text-gray-500">Cancel</Text>
             </TouchableOpacity>
           </View>

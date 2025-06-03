@@ -12,6 +12,14 @@ const credentialApis = {
       },
     });
   },
+
+  createCredential: (body: any) => {
+    return http.post<SuccessResponse<Credential>>(CREDENTIAL_URI, body);
+  },
+
+  disconnectSocialAccount(id: string) {
+    return http.patch<{ message: string }>(`${CREDENTIAL_URI}/${id}/disconnect`);
+  },
 };
 
 export default credentialApis;
